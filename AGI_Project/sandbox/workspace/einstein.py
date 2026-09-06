@@ -1,0 +1,1 @@
+print('Einstein would be 200 years old')
