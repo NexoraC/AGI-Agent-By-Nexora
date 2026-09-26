@@ -78,13 +78,19 @@ def _call_gemini_model(model_name: str, payload: dict, headers: dict, max_retrie
     for attempt in range(max_retries):
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=timeout)
-            response.raise_for_status()
-            data = response.json()
-            return data['candidates'][0]['content']['parts'][0]['text']
+            if response.status_code >= 400:
+                body = _mask_secret(response.text[:200])
+                logger.error(f'Gemini [{model_name}] HTTP {response.status_code} (Attempt {attempt + 1}/{max_retries}): {body}')
+                if response.status_code in (400, 401, 403):
+                    break  # permanent error — no point retrying
+            else:
+                response.raise_for_status()
+                data = response.json()
+                return data['candidates'][0]['content']['parts'][0]['text']
         except Exception as e:
             logger.error(f'Gemini [{model_name}] Error (Attempt {attempt + 1}/{max_retries}): {_mask_secret(str(e))}')
-            if attempt < max_retries - 1:
-                time.sleep(min(2 ** attempt, 10))
+        if attempt < max_retries - 1:
+            time.sleep(min(2 ** attempt, 10))
     return None
 
 
@@ -148,13 +154,19 @@ def _ask_groq(messages: List[Dict], temperature: float = 0.0, max_retries: int =
     for attempt in range(max_retries):
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=timeout)
-            response.raise_for_status()
-            data = response.json()
-            return data['choices'][0]['message']['content']
+            if response.status_code >= 400:
+                body = _mask_secret(response.text[:200])
+                logger.error(f'Groq API HTTP {response.status_code} (Attempt {attempt + 1}/{max_retries}): {body}')
+                if response.status_code in (400, 401, 403):
+                    break  # permanent error — no point retrying
+            else:
+                response.raise_for_status()
+                data = response.json()
+                return data['choices'][0]['message']['content']
         except Exception as e:
             logger.error(f'Groq API Error (Attempt {attempt + 1}/{max_retries}): {_mask_secret(str(e))}')
-            if attempt < max_retries - 1:
-                time.sleep(min(2 ** attempt, 10))
+        if attempt < max_retries - 1:
+            time.sleep(min(2 ** attempt, 10))
 
     logger.error('All attempts to contact Groq failed.')
     return None
@@ -180,10 +192,13 @@ def _ask_ollama(messages: List[Dict], temperature: float = 0.0, max_retries: int
             response = requests.post(OLLAMA_API_URL, json=payload, headers=headers, timeout=timeout)
             response.raise_for_status()
             return response.json().get('message', {}).get('content', '')
+        except requests.exceptions.ConnectionError:
+            logger.error(f'Local Ollama not reachable at {OLLAMA_API_URL} — is it running?')
+            break  # connection refused won't fix itself by retrying
         except Exception as e:
             logger.error(f'Local Ollama Error (Attempt {attempt + 1}/{max_retries}): {e}')
-            if attempt < max_retries - 1:
-                time.sleep(min(2 ** attempt, 10))
+        if attempt < max_retries - 1:
+            time.sleep(min(2 ** attempt, 10))
 
     return '{"tool": "final_answer", "query": "SYSTEM ERROR: All LLM providers are offline."}'
 
