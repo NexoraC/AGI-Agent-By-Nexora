@@ -80,7 +80,8 @@ def _call_gemini_model(model_name: str, payload: dict, headers: dict, max_retrie
             response = requests.post(url, json=payload, headers=headers, timeout=timeout)
             if response.status_code >= 400:
                 body = _mask_secret(response.text[:200])
-                logger.error(f'Gemini [{model_name}] HTTP {response.status_code} (Attempt {attempt + 1}/{max_retries}): {body}')
+                log = logger.warning if response.status_code in (429, 500, 502, 503, 504) else logger.error
+                log(f'Gemini [{model_name}] HTTP {response.status_code} (Attempt {attempt + 1}/{max_retries}): {body}')
                 if response.status_code in (400, 401, 403):
                     break  # permanent error — no point retrying
             else:
