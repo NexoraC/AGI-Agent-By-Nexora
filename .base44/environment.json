@@ -1,0 +1,19 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "GEMINI_API_KEY",
+      "description": "Google Gemini API key — the default LLM provider. Get it from https://aistudio.google.com/apikey",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "GROQ_API_KEY",
+      "description": "Groq API key — fallback LLM provider. Optional. Get it from https://console.groq.com/keys",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": true
+    }
+  ]
+}

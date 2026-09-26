@@ -1,0 +1,25 @@
+services:
+  agi:
+    image: python:3.12-slim
+    working_dir: /app/AGI_Project
+    volumes:
+      - ./:/app
+    ports:
+      - "3000:3000"
+    environment:
+      - FLASK_ENV=development
+      - PROVIDER=gemini
+      - GEMINI_MODEL=gemini-flash-latest
+      - GEMINI_FALLBACK_MODEL=gemini-flash-lite-latest
+      - GROQ_MODEL=llama-3.3-70b-versatile
+      - OLLAMA_API_URL=http://localhost:11434/api/chat
+      - OLLAMA_MODEL=qwen2.5:14b
+      - BASE44_PUBLIC_HOST_SUFFIX=${BASE44_PUBLIC_HOST_SUFFIX:-}
+    env_file:
+      - /run/base44/app.env
+    command: >
+      bash -c "
+        pip install --no-cache-dir -r requirements.txt &&
+        python web_app.py
+      "
+    restart: unless-stopped
